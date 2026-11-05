@@ -5,6 +5,10 @@ node_modules
 .pnp
 .pnp.js
 
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
 # Local env files
 .env
 .env.local
@@ -26,7 +30,6 @@ coverage
 out/
 build
 dist
-
 
 # Debug
 npm-debug.log*

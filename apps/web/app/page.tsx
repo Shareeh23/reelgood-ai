@@ -89,7 +89,7 @@ export default function Home() {
                 className="overflow-hidden rounded-2xl border border-white/10 bg-zinc-900"
               >
                 <div
-                  className={`flex aspect-[4/5] items-end bg-gradient-to-br p-5 ${
+                  className={`flex aspect-4/5 items-end bg-linear-to-br p-5 ${
                     [
                       "from-indigo-950 via-violet-900 to-amber-700",
                       "from-rose-950 via-red-900 to-orange-700",
