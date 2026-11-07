@@ -1,4 +1,4 @@
-type MovieRecommendationInput = {
+export type MovieRecommendationInput = {
   userPrompt: string;
   genre: string;
   mood: string;
