@@ -4,6 +4,8 @@ import express, { type RequestHandler, Request, Response } from "express";
 import cors from "cors";
 import helmet from "helmet";
 
+import recommendationRouter from "./routes/recommendation.route";
+
 const app = express();
 
 const port = Number(env.PORT ?? 8080);
@@ -14,12 +16,14 @@ app.use(helmet() as unknown as RequestHandler);
 
 app.use(express.json());
 
-app.get("/", (_req: Request, res: Response) => {
+app.get("/health", (_req: Request, res: Response) => {
   res.status(200).json({
     status: "ok",
     message: "healthy",
   });
 });
+
+app.use("/api/recommend", recommendationRouter);
 
 const server = app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
