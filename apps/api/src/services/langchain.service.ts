@@ -44,12 +44,7 @@ const promptTemplate = ChatPromptTemplate.fromMessages([
 
 const chain = promptTemplate.pipe(model);
 
-export default async function getRecommendation(inputs: {
-  userPrompt: string;
-  genre: string;
-  mood: string;
-  count: number;
-}) {
+export default async function getRecommendation(inputs: MovieRecommendationInput) {
   const response = await chain.invoke(inputs);
   return response.text;
 }
