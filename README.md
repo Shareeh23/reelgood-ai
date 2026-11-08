@@ -1,159 +1,258 @@
-# Turborepo starter
+# ReelGood — AI Movie Finder
 
-This Turborepo starter is maintained by the Turborepo core team.
+Find a film that fits the moment. ReelGood takes a short description of what someone wants to watch, along with genre, mood, and result count, then returns structured movie recommendations.
 
-## Using this example
+![Next.js](https://img.shields.io/badge/Next.js-16-000000?logo=nextdotjs&logoColor=white)
+![Express](https://img.shields.io/badge/Express-5-000000?logo=express&logoColor=white)
+![LangChain.js](https://img.shields.io/badge/LangChain.js-1-1C3C3C?logo=langchain&logoColor=white)
+![Gemini](https://img.shields.io/badge/Gemini-3.7_Flash-4285F4?logo=googlegemini&logoColor=white)
+![pnpm](https://img.shields.io/badge/pnpm-11-F69220?logo=pnpm&logoColor=white)
+![Turborepo](https://img.shields.io/badge/Turborepo-2-000000?logo=turborepo&logoColor=white)
 
-Run the following command:
+## Project overview
 
-```sh
-npx create-turbo@latest
+ReelGood is a TypeScript monorepo with two applications:
+
+| App | Directory | Purpose | Local URL |
+| --- | --- | --- | --- |
+| Web | `apps/web` | Next.js interface for entering preferences and viewing recommendations | `http://localhost:3000` |
+| API | `apps/api` | Express server that calls Gemini through LangChain and returns structured recommendations | `http://localhost:8080` |
+
+The repository uses pnpm workspaces to install and manage the applications, and Turborepo to run development and build tasks across the monorepo.
+
+## Architecture
+
+```mermaid
+flowchart LR
+    U[User] --> W[Next.js web app\napps/web]
+    W -->|POST /api/recommend\nJSON preferences| A[Express API\napps/api]
+    A -->|Prompt + structured output schema| L[LangChain JS]
+    L --> G[Gemini API\nGemini 3.7 Flash]
+    G -->|Structured movie data| L
+    L --> A
+    A -->|JSON recommendations| W
 ```
 
-## What's inside?
+### Recommendation flow
 
-This Turborepo includes the following packages/apps:
+1. The user enters a request, genre, mood, and number of recommendations in the web form.
+2. React Hook Form and Zod validate the form values in the browser.
+3. The web app sends a JSON `POST` request to the Express API.
+4. LangChain formats the request with a prompt template and asks Gemini for output matching the movie schema.
+5. The API responds with a list of movies that the web app displays as cards.
 
-### Apps and Packages
+The API currently uses structured output for the model response. It does not yet perform runtime Zod validation of the incoming request body.
 
-- `docs`: a [Next.js](https://nextjs.org/) app
-- `web`: another [Next.js](https://nextjs.org/) app
-- `@repo/ui`: a stub React component library shared by both `web` and `docs` applications
-- `@repo/eslint-config`: `eslint` configurations (includes `@next/eslint-plugin-next` and `eslint-config-prettier`)
-- `@repo/typescript-config`: `tsconfig.json`s used throughout the monorepo
+## Dependency map
 
-Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
-
-### Utilities
-
-This Turborepo has some additional tools already setup for you:
-
-- [TypeScript](https://www.typescriptlang.org/) for static type checking
-- [ESLint](https://eslint.org/) for code linting
-- [Prettier](https://prettier.io) for code formatting
-
-### Build
-
-To build all apps and packages, run the following command:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
-
-```sh
-cd my-turborepo
-turbo build
+```mermaid
+flowchart TB
+    subgraph Workspace[Root workspace]
+      PNPM[pnpm workspaces]
+      TURBO[Turborepo]
+    end
+    subgraph Web[apps/web]
+      NEXT[Next.js + React]
+      SHADCN[shadcn/ui + Base UI]
+      FORM[React Hook Form + Zod]
+      NEXT --> SHADCN
+      NEXT --> FORM
+    end
+    subgraph API[apps/api]
+      EXPRESS[Express]
+      LC[LangChain Core + Google integration]
+      SCHEMA[Zod movie schema]
+      EXPRESS --> LC
+      LC --> SCHEMA
+    end
+    PNPM --> Web
+    PNPM --> API
+    TURBO --> Web
+    TURBO --> API
 ```
 
-Without global `turbo`, use your package manager:
+## Technology stack
 
-```sh
-cd my-turborepo
-npx turbo build
-pnpm exec turbo build
-pnpm exec turbo build
+| Area | Technology | Use |
+| --- | --- | --- |
+| Monorepo | pnpm workspaces | Package and dependency management across apps |
+| Task runner | Turborepo | Run and cache app tasks from the repository root |
+| Web framework | Next.js App Router | Web pages, loading UI, and client-side form interaction |
+| UI | React, Tailwind CSS 4, shadcn/ui, Base UI | Components, styling, and accessible interface primitives |
+| Forms | React Hook Form, Zod, `@hookform/resolvers` | Form state and browser-side input validation |
+| API server | Express 5 | Health check and recommendation endpoint |
+| AI orchestration | LangChain JS (`@langchain/core`, `@langchain/google`) | Prompt templates, chat model integration, structured output |
+| Model | Google Gemini 3.7 Flash | Generates movie recommendations |
+| API response schema | Zod | Defines the expected recommendation and movie fields |
+| Language | TypeScript | Types for the web app and API |
+
+## Repository structure
+
+```text
+.
+├── apps/
+│   ├── api/
+│   │   └── src/
+│   │       ├── controllers/       # Express request handlers
+│   │       ├── routes/            # API route definitions
+│   │       ├── schemas/           # Zod movie response schema
+│   │       ├── services/          # LangChain and Gemini integration
+│   │       ├── types/             # API request types
+│   │       └── server.ts          # Express server entry point
+│   └── web/
+│       ├── app/                   # Next.js routes, layout, and global styles
+│       ├── components/ui/          # shadcn UI primitives
+│       ├── components/web/         # Movie finder components
+│       ├── lib/                   # Web form schema and helpers
+│       └── types/                 # Movie response types
+├── package.json                   # Root scripts and toolchain
+├── pnpm-workspace.yaml            # Workspace package locations
+├── pnpm-lock.yaml                 # Locked dependency versions
+└── turbo.json                     # Turborepo task configuration
 ```
 
-You can build a specific package by using a [filter](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters):
+## Requirements
 
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
+| Requirement | Version |
+| --- | --- |
+| Node.js | `>=24` |
+| pnpm | `11.25.0` (declared by the root package) |
+| Google Gemini API key | Required to generate recommendations |
 
-```sh
-turbo build --filter=docs
+## Getting started
+
+### 1. Install dependencies
+
+Run from the repository root:
+
+```bash
+pnpm install
 ```
 
-Without global `turbo`:
+### 2. Configure the API environment
 
-```sh
-npx turbo build --filter=docs
-pnpm exec turbo build --filter=docs
-pnpm exec turbo build --filter=docs
+Copy the API example environment file and add your Gemini API key:
+
+```bash
+cp apps/api/.env.example apps/api/.env
 ```
 
-### Develop
+Set the values in `apps/api/.env`:
 
-To develop all apps and packages, run the following command:
+| Variable | Purpose | Example |
+| --- | --- | --- |
+| `PORT` | Port used by the Express server | `8080` |
+| `FRONTEND_URL` | Browser origin allowed by CORS | `http://localhost:3000` |
+| `GEMINI_API_KEY` | Credential for the Gemini API | Your key from Google AI Studio |
 
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
+Keep `.env` files and API keys private. Do not commit real credentials.
 
-```sh
-cd my-turborepo
-turbo dev
+### 3. Configure the web app
+
+Create `apps/web/.env.local` with the API base URL:
+
+```env
+NEXT_PUBLIC_API_URL=http://localhost:8080
 ```
 
-Without global `turbo`, use your package manager:
+This URL is used by the browser to contact the Express API. It is public configuration and must not contain secrets.
 
-```sh
-cd my-turborepo
-npx turbo dev
-pnpm exec turbo dev
-pnpm exec turbo dev
+### 4. Start the applications
+
+Run both apps from the repository root:
+
+```bash
+pnpm dev
 ```
 
-You can develop a specific package by using a [filter](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters):
+Or start them individually in separate terminals:
 
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
-
-```sh
-turbo dev --filter=web
+```bash
+pnpm --filter api dev
 ```
 
-Without global `turbo`:
-
-```sh
-npx turbo dev --filter=web
-pnpm exec turbo dev --filter=web
-pnpm exec turbo dev --filter=web
+```bash
+pnpm --filter web dev
 ```
 
-### Remote Caching
+The web app runs at `http://localhost:3000`; the API defaults to `http://localhost:8080`.
 
-> [!TIP]
-> Vercel Remote Cache is free for all plans. Get started today at [vercel.com](https://vercel.com/signup?utm_source=remote-cache-sdk&utm_campaign=free_remote_cache).
+## API reference
 
-Turborepo can use a technique known as [Remote Caching](https://turborepo.dev/docs/core-concepts/remote-caching) to share cache artifacts across machines, enabling you to share build caches with your team and CI/CD pipelines.
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `GET` | `/health` | Confirm the API server is running |
+| `POST` | `/api/recommend` | Generate structured movie recommendations |
 
-By default, Turborepo will cache locally. To enable Remote Caching you will need an account with Vercel. If you don't have an account you can [create one](https://vercel.com/signup?utm_source=turborepo-examples), then enter the following commands:
+### Recommendation request
 
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
+`POST /api/recommend`
 
-```sh
-cd my-turborepo
-turbo login
+```json
+{
+  "userPrompt": "Recommend character-driven dramas about grief and rebuilding a life.",
+  "genre": "Drama",
+  "mood": "Reflective and emotionally complex",
+  "count": 3
+}
 ```
 
-Without global `turbo`, use your package manager:
+### Successful response
 
-```sh
-cd my-turborepo
-npx turbo login
-pnpm exec turbo login
-pnpm exec turbo login
+```json
+{
+  "success": true,
+  "result": {
+    "movies": [
+      {
+        "title": "Example Film",
+        "year": 2020,
+        "genre": ["Drama"],
+        "cast": ["Actor One", "Actor Two"],
+        "reason": "A character-focused story that explores grief and change.",
+        "rating": 4.1
+      }
+    ]
+  }
+}
 ```
 
-This will authenticate the Turborepo CLI with your [Vercel account](https://vercel.com/docs/concepts/personal-accounts/overview).
+The response schema includes a title, release year, genre list, cast list, recommendation reason, and a model-generated rating from 1 to 5. Treat the rating as a model estimate, not a verified external rating.
 
-Next, you can link your Turborepo to your Remote Cache by running the following command from the root of your Turborepo:
+### Health check
 
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
-
-```sh
-turbo link
+```bash
+curl http://localhost:8080/health
 ```
 
-Without global `turbo`:
+## Workspace commands
 
-```sh
-npx turbo link
-pnpm exec turbo link
-pnpm exec turbo link
-```
+Run root commands from the repository root:
 
-## Useful Links
+| Command | Purpose |
+| --- | --- |
+| `pnpm dev` | Start all apps with a `dev` task |
+| `pnpm --filter web dev` | Start only the Next.js app |
+| `pnpm --filter api dev` | Start only the Express API |
+| `pnpm build` | Run available build tasks through Turborepo |
+| `pnpm lint` | Run available lint tasks through Turborepo |
+| `pnpm format` | Format TypeScript, TSX, and Markdown files with Prettier |
+| `pnpm --filter web typecheck` | Type-check the web app |
+| `pnpm --filter api typecheck` | Type-check the API |
 
-Learn more about the power of Turborepo:
+**Type-check task note:** the root currently defines `pnpm check-types` as a Turborepo task, while both app packages name their scripts `typecheck`. Use the two package-level commands above until those task names are aligned.
 
-- [Tasks](https://turborepo.dev/docs/crafting-your-repository/running-tasks)
-- [Caching](https://turborepo.dev/docs/crafting-your-repository/caching)
-- [Remote Caching](https://turborepo.dev/docs/core-concepts/remote-caching)
-- [Filtering](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters)
-- [Configuration Options](https://turborepo.dev/docs/reference/configuration)
-- [CLI Usage](https://turborepo.dev/docs/reference/command-line-reference)
+## Current scope
+
+- The web form accepts a free-text request, genre, mood, and recommendation count.
+- The API returns structured movie data through LangChain and Gemini.
+- Movie posters are currently represented by styled placeholders; no movie database or poster service is connected.
+- The API currently uses in-memory request handling and does not persist user data or recommendation history.
+- Model generation can take time; the web results panel displays a loading skeleton while the request is in progress.
+
+## Security notes
+
+- Store `GEMINI_API_KEY` only in the API environment file.
+- `NEXT_PUBLIC_API_URL` is exposed to the browser and should contain only the API base URL.
+- CORS allows the origin configured by `FRONTEND_URL`.
+- Incoming request values currently rely on client-side validation and TypeScript types; add server-side validation before accepting untrusted production traffic.
