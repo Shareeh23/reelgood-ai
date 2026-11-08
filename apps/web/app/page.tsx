@@ -1,121 +1,164 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 
-const movies = [
-  {
-    title: "Dune: Part Two",
-    year: 2024,
-    genre: "Sci-Fi · Adventure",
-    rating: "8.5",
-  },
-  { title: "Past Lives", year: 2023, genre: "Romance · Drama", rating: "7.8" },
-  {
-    title: "The Grand Budapest Hotel",
-    year: 2014,
-    genre: "Comedy · Adventure",
-    rating: "8.1",
-  },
-  {
-    title: "Spider-Man: Into the Spider-Verse",
-    year: 2018,
-    genre: "Animation · Action",
-    rating: "8.4",
-  },
-];
+import { MovieCard } from "@/components/web/movie-card";
+import { MovieRecommendationForm } from "@/components/web/movie-recommendation-form";
+import { MovieResultsSkeleton } from "@/components/web/movie-results-skeleton";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import type { RecommendationFormValues } from "@/lib/recommendation-form-schema";
+import type { Movie } from "@/types/movie";
+
+type ApiResponse = {
+  success: boolean;
+  result?: { movies: Movie[] };
+  message?: string;
+};
 
 export default function Home() {
-  const [query, setQuery] = useState("");
+  const [movies, setMovies] = useState<Movie[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [hasSubmitted, setHasSubmitted] = useState(false);
 
-  const filteredMovies = movies.filter((movie) =>
-    `${movie.title} ${movie.genre} ${movie.year}`
-      .toLowerCase()
-      .includes(query.toLowerCase()),
-  );
+  async function getRecommendations(values: RecommendationFormValues) {
+    setIsLoading(true);
+    setError("");
+    setHasSubmitted(true);
+
+    try {
+      const apiUrl = (
+        process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080"
+      ).replace(/\/$/, "");
+
+      const response = await fetch(`${apiUrl}/api/recommend`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(values),
+      });
+
+      const data = (await response.json()) as ApiResponse;
+
+      if (!response.ok || !data.success || !data.result) {
+        throw new Error(data.message ?? "Could not get recommendations.");
+      }
+
+      setMovies(data.result.movies);
+    } catch (requestError) {
+      setMovies([]);
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : "Something went wrong. Please try again.",
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  }
 
   return (
-    <main className="min-h-screen bg-zinc-950 text-white">
-      <header className="border-b border-white/10">
-        <nav className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
-          <a href="#" className="text-xl font-bold tracking-tight">
-            <span className="text-amber-400">reel</span>good
-          </a>
-          <span className="text-sm text-zinc-400">
+    <main className="min-h-screen">
+      <header className="border-b">
+        <nav
+          className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5"
+          aria-label="Main navigation"
+        >
+          <Link
+            href="/"
+            className="rounded-sm text-xl font-bold tracking-tight focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <span className="text-primary">reel</span>good
+            <span className="sr-only"> home</span>
+          </Link>
+          <p className="hidden text-sm text-muted-foreground sm:block">
             Your next favorite movie awaits
-          </span>
+          </p>
         </nav>
       </header>
 
-      <section className="mx-auto max-w-6xl px-6 py-16 sm:py-24">
-        <p className="text-sm font-semibold uppercase tracking-[0.25em] text-amber-400">
+      <section className="mx-auto max-w-7xl px-6 py-12 sm:py-16">
+        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-primary">
           Movie finder
         </p>
-        <h1 className="mt-4 max-w-2xl text-4xl font-bold tracking-tight sm:text-6xl">
+        <h1 className="mt-3 max-w-3xl text-4xl font-bold tracking-tight sm:text-5xl">
           What are you in the mood to watch?
         </h1>
-        <p className="mt-5 max-w-xl text-lg text-zinc-400">
-          Search films by title, year, or genre and find something worth
-          watching tonight.
+        <p className="mt-4 max-w-2xl text-muted-foreground">
+          Tell us what you’re looking for and get thoughtful movie
+          recommendations.
         </p>
 
-        <label htmlFor="movie-search" className="sr-only">
-          Search movies
-        </label>
-        <input
-          id="movie-search"
-          type="search"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder="Try “sci-fi”, “comedy”, or a movie title"
-          className="mt-9 w-full max-w-2xl rounded-xl border border-white/10 bg-white/5 px-5 py-4 text-base outline-none transition placeholder:text-zinc-500 focus:border-amber-400"
-        />
-      </section>
+        <div className="mt-10 grid items-start gap-8 lg:grid-cols-[minmax(18rem,0.8fr)_minmax(0,1.2fr)]">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">
+                Describe your movie night
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <MovieRecommendationForm
+                onSubmit={getRecommendations}
+                isLoading={isLoading}
+              />
+            </CardContent>
+          </Card>
 
-      <section className="mx-auto max-w-6xl px-6 pb-20">
-        <div className="mb-6 flex items-end justify-between">
-          <h2 className="text-2xl font-semibold">
-            {query ? "Search results" : "A few good picks"}
-          </h2>
-          <span className="text-sm text-zinc-500">
-            {filteredMovies.length} movies
-          </span>
-        </div>
-
-        {filteredMovies.length > 0 ? (
-          <ul className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            {filteredMovies.map((movie, index) => (
-              <li
-                key={movie.title}
-                className="overflow-hidden rounded-2xl border border-white/10 bg-zinc-900"
+          <section aria-labelledby="recommendations-heading">
+            <div className="mb-4 flex min-h-8 items-center justify-between gap-4">
+              <h2
+                id="recommendations-heading"
+                className="text-xl font-semibold"
               >
-                <div
-                  className={`flex aspect-4/5 items-end bg-linear-to-br p-5 ${
-                    [
-                      "from-indigo-950 via-violet-900 to-amber-700",
-                      "from-rose-950 via-red-900 to-orange-700",
-                      "from-sky-950 via-blue-900 to-emerald-700",
-                      "from-fuchsia-950 via-purple-900 to-pink-700",
-                    ][index % 4]
-                  }`}
-                >
-                  <span className="rounded-full bg-black/30 px-3 py-1 text-sm font-medium backdrop-blur">
-                    ★ {movie.rating}
-                  </span>
+                {isLoading
+                  ? "Finding recommendations"
+                  : movies.length
+                    ? "Recommended for you"
+                    : "Your recommendations"}
+              </h2>
+              {!isLoading && movies.length > 0 && (
+                <p className="text-sm text-muted-foreground">
+                  {movies.length} {movies.length === 1 ? "movie" : "movies"}
+                </p>
+              )}
+            </div>
+
+            <div aria-live="polite" aria-busy={isLoading}>
+              {isLoading ? (
+                <MovieResultsSkeleton />
+              ) : error ? (
+                <Alert variant="destructive" role="alert">
+                  <AlertTitle>Couldn’t get recommendations</AlertTitle>
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              ) : movies.length > 0 ? (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {movies.map((movie, index) => (
+                    <MovieCard
+                      key={`${movie.title}-${movie.year}`}
+                      movie={movie}
+                      index={index}
+                    />
+                  ))}
                 </div>
-                <div className="p-5">
-                  <h3 className="font-semibold">{movie.title}</h3>
-                  <p className="mt-2 text-sm text-zinc-400">
-                    {movie.year} <span aria-hidden="true">·</span> {movie.genre}
-                  </p>
-                </div>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="rounded-xl border border-dashed border-white/15 p-8 text-zinc-400">
-            No movies found. Try a different title, year, or genre.
-          </p>
-        )}
+              ) : (
+                <Card className="border-dashed">
+                  <CardContent className="py-12 text-center">
+                    <p className="font-medium">
+                      {hasSubmitted
+                        ? "No recommendations returned."
+                        : "Your picks will show up here."}
+                    </p>
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      Fill in the form to get personalized recommendations.
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          </section>
+        </div>
       </section>
     </main>
   );
