@@ -3,6 +3,12 @@ import { env } from "node:process";
 import { ChatGoogle } from "@langchain/google/node";
 import { ChatPromptTemplate } from "@langchain/core/prompts";
 
+import type { MovieRecommendationInput } from "../types/recommendation";
+import {
+  recommendationSchema,
+  type Recommendations,
+} from "../schemas/movie.schema";
+
 if (!env.GEMINI_API_KEY) {
   throw new Error("GEMINI_API_KEY is required");
 }
@@ -10,7 +16,6 @@ if (!env.GEMINI_API_KEY) {
 const model = new ChatGoogle({
   apiKey: env.GEMINI_API_KEY,
   model: "gemini-3.7-flash",
-  temperature: 0.3,
 });
 
 const promptTemplate = ChatPromptTemplate.fromMessages([
@@ -42,9 +47,11 @@ const promptTemplate = ChatPromptTemplate.fromMessages([
   ],
 ]);
 
-const chain = promptTemplate.pipe(model);
+const structuredModel = model.withStructuredOutput(recommendationSchema);
+const structuredChain = promptTemplate.pipe(structuredModel);
 
-export default async function getRecommendation(inputs: MovieRecommendationInput) {
-  const response = await chain.invoke(inputs);
-  return response.text;
+export default async function getRecommendations(
+  inputs: MovieRecommendationInput,
+): Promise<Recommendations> {
+  return structuredChain.invoke(inputs);
 }
